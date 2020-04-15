@@ -1,52 +1,79 @@
-package com.person.demo3;
+package com.person.demo4;
 
 import com.person.demo3.pojo.Product;
 import com.person.demo3.util.ProductUtil;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.http.HttpHost;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.open.OpenIndexRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.Fuzziness;
+import org.elasticsearch.index.query.MatchQueryBuilder;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 
-//通过bulkRequest()对象 进行批量地将txt文本中的数据上传到ES（ElasticSearch）中。
+//使用模糊查询
 public class TestElastisearch {
 
     private static RestHighLevelClient client = new RestHighLevelClient(
             RestClient.builder(
                     new HttpHost("localhost", 9200, "http")
-
-            ).setMaxRetryTimeoutMillis(1*60*1000)//超时时间设为5分钟
-    );
-
-
-    //索引为：commodity 商品。
-    private static String indexName = "exam";
+            ));
+    private static String indexName = "how2java";
 
     public static void main(String[] args) throws IOException {
 
+        String keyword = "时尚连衣裙";
+        int start = 0;
+        int count = 10;
 
-        //判断该indexName是否存在
-        if (!checkIndexExits(indexName)) {
-            //不存在时，创建
-            createIndex(indexName);
+        SearchHits hits = search(keyword, start, count);
+
+        SearchHit[] searchHits = hits.getHits();
+        for (SearchHit hit : searchHits) {
+
+            System.out.println(hit.getSourceAsString());
         }
 
-        //读取该文件里面的内容。
-        List<Product> products = ProductUtil.file2list("50size_products.txt");
-        System.out.println("该文件有" + products.size() + "条数据");
-        batchInsert(products);
         client.close();
 
+    }
 
+    private static SearchHits search(String keyword, int start, int count) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(indexName);
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        //关键字匹配
+        MatchQueryBuilder matchQueryBuilder = new MatchQueryBuilder("name",keyword );
+        //模糊匹配
+        matchQueryBuilder.fuzziness(Fuzziness.AUTO);
+        sourceBuilder.query(matchQueryBuilder);
+        //第几页
+        sourceBuilder.from(start);
+        //第几条
+        sourceBuilder.size(count);
+
+        searchRequest.source(sourceBuilder);
+        //匹配度从高到低
+        sourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC));
+
+        SearchResponse searchResponse = client.search(searchRequest);
+
+        SearchHits hits = searchResponse.getHits();
+        return hits;
     }
 
     //使用bulkRequest() 上传到ES。
@@ -56,7 +83,7 @@ public class TestElastisearch {
         for (Product p : products) {
             //将product转换为 map 。
             Map<String, Object> map = p.toMap();
-            IndexRequest product = new IndexRequest(indexName, "p", String.valueOf(p.getId())).source(map);
+            IndexRequest product = new IndexRequest(indexName, "product", String.valueOf(p.getId())).source(map);
             bulkRequest.add(product);
         }
         client.bulk(bulkRequest);
@@ -70,7 +97,7 @@ public class TestElastisearch {
             //如果不存在，则会报错，进入catch{ } 中
             OpenIndexRequest index = new OpenIndexRequest(indexName);
             client.indices().open(index).isAcknowledged();
-        } catch (ElasticsearchStatusException e) {
+        }catch (ElasticsearchStatusException e) {
             //不存在时，就设置为false.
             flag = false;
 
@@ -87,14 +114,13 @@ public class TestElastisearch {
     //当indexname 不存在时，就创建
     public static void createIndex(String indexName) throws IOException {
         //创建索引
-        try {
+//        try {
             CreateIndexRequest createIndexRequest = new CreateIndexRequest(indexName);
             client.indices().create(createIndexRequest);
-            System.out.println("创建成功！");
-        } catch (IOException e) {
-            System.out.println("创建索引失败 !!");
-            e.printStackTrace();
-        }
+//        } catch (IOException e) {
+//            System.out.println("创建索引失败 !!");
+//            e.printStackTrace();
+//        }
     }
 
 

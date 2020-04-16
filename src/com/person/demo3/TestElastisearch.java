@@ -29,7 +29,7 @@ public class TestElastisearch {
 
 
     //索引为：commodity 商品。
-    private static String indexName = "exam";
+    private static String indexName = "how2java";
 
     public static void main(String[] args) throws IOException {
 
@@ -41,7 +41,7 @@ public class TestElastisearch {
         }
 
         //读取该文件里面的内容。
-        List<Product> products = ProductUtil.file2list("50size_products.txt");
+        List<Product> products = ProductUtil.file2list("140k_products.txt");
         System.out.println("该文件有" + products.size() + "条数据");
         batchInsert(products);
         client.close();
@@ -56,7 +56,7 @@ public class TestElastisearch {
         for (Product p : products) {
             //将product转换为 map 。
             Map<String, Object> map = p.toMap();
-            IndexRequest product = new IndexRequest(indexName, "p", String.valueOf(p.getId())).source(map);
+            IndexRequest product = new IndexRequest(indexName, "product", String.valueOf(p.getId())).source(map);
             bulkRequest.add(product);
         }
         client.bulk(bulkRequest);

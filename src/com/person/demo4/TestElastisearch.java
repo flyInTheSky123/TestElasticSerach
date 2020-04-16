@@ -52,6 +52,7 @@ public class TestElastisearch {
 
     }
 
+    //从ES中模糊查询。
     private static SearchHits search(String keyword, int start, int count) throws IOException {
         SearchRequest searchRequest = new SearchRequest(indexName);
 
